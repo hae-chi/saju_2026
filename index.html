@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>사주로 찾는 나만의 숙소</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body {
+    background: radial-gradient(circle at 50% 0%, #2a1f5c 0%, #160f33 45%, #0a0620 100%);
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+    transition: background 0.8s ease;
+  }
+  #mainScreen, #loadingScreen { overflow: hidden; }
+  #resultScreen {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: linear-gradient(to bottom, rgba(42,31,92,0.4) 0%, rgba(10,6,32,0.2) 45%, rgba(5,3,15,0.5) 100%);
+  }
+  #resultScreen::-webkit-scrollbar { display: none; }
+  .glass {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(212, 175, 130, 0.25);
+    backdrop-filter: blur(10px);
+  }
+  .gold-text {
+    background: linear-gradient(135deg, #f3d9a4, #d4af37, #f3d9a4);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  select, input[type="checkbox"] { -webkit-appearance: none; appearance: none; }
+  .custom-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23d4af37'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1rem;
+  }
+  .checkbox-custom {
+    width: 1.1rem; height: 1.1rem;
+    border: 1.5px solid rgba(212,175,130,0.6);
+    border-radius: 4px;
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  input[type="checkbox"]:checked + .checkbox-custom {
+    background: #d4af37;
+    border-color: #d4af37;
+  }
+  input[type="checkbox"]:checked + .checkbox-custom::after {
+    content: '';
+    position: absolute;
+    left: 3px; top: -1px;
+    width: 5px; height: 9px;
+    border: solid #160f33;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .twinkle {
+    position: absolute;
+    border-radius: 50%;
+    background: #f3d9a4;
+    opacity: 0.5;
+    animation: twinkle 3s ease-in-out infinite;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.15; transform: scale(0.8); }
+    50% { opacity: 0.8; transform: scale(1.2); }
+  }
+  .fade-out { animation: fadeOut 0.5s ease forwards; }
+  .fade-in { animation: fadeIn 0.6s ease forwards; }
+  @keyframes fadeOut { to { opacity: 0; transform: scale(0.96); } }
+  @keyframes fadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  .hidden-screen { display: none; }
+
+  .spinner-ring {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 3px solid rgba(212,175,130,0.15);
+    border-top-color: #d4af37;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #d4af37, #f3d9a4);
+    width: 0%;
+    border-radius: 999px;
+    transition: width 1.5s ease;
+  }
+
+  /* ---------- 숙소 카드: 흰 배경 제거, 다크 글래스 마감으로 배경과 끊김 없이 이어짐 ---------- */
+  .hotel-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(212,175,130,0.2);
+    border-radius: 1.25rem;
+    overflow: hidden;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .hotel-card:active { transform: scale(0.98); }
+  .hotel-thumb {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    display: block;
+    background: #2a2440;
+  }
+  .hotel-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: rgba(212,175,130,0.16);
+    color: #f3d9a4;
+    border: 1px solid rgba(212,175,130,0.25);
+  }
+  .hotel-cta-btn {
+    background: linear-gradient(135deg, #f3d9a4, #d4af37);
+    color: #160f33;
+    font-weight: 700;
+    font-size: 12px;
+    border-radius: 999px;
+    padding: 7px 16px;
+    white-space: nowrap;
+    box-shadow: 0 4px 10px rgba(212,175,130,0.3);
+  }
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 32px;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(20, 14, 40, 0.95);
+    color: #f3d9a4;
+    border: 1px solid rgba(212,175,130,0.3);
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    z-index: 10000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .lead-link-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: none;
+    border: none;
+    color: rgba(212,175,130,0.85);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 6px 0;
+  }
+
+  /* ---------- 오각형 방사형 그래프 ---------- */
+  .radar-grid {
+    fill: none;
+    stroke: rgba(212,175,130,0.18);
+    stroke-width: 1;
+  }
+  .radar-value {
+    fill: rgba(212,175,130,0.22);
+    stroke: #d4af37;
+    stroke-width: 2;
+    stroke-linejoin: round;
+    transition: all 0.8s ease;
+  }
+  .radar-dot {
+    fill: #f3d9a4;
+    stroke: #160f33;
+    stroke-width: 1.5;
+    transition: all 0.8s ease;
+  }
+
+  /* ---------- 중앙 점수 오버레이 (붉은 원 제거, 프레미엄 단독 숫자) ---------- */
+  .radar-score-wrap {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+  }
+  .radar-score-num {
+    font-size: 2.75rem;
+    line-height: 1;
+    font-weight: 800;
+    color: #fdf3df;
+    text-shadow: 0 0 14px rgba(243,217,164,0.55), 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .radar-score-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: rgba(255,255,255,0.55);
+    margin-top: 2px;
+  }
+
+  /* ---------- 오행 강약 뱃지 (그래프 꼭지점 오버레이) ---------- */
+  .oheng-badge {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 800;
+  }
+  .oheng-badge.strong {
+    background: linear-gradient(135deg, #ffe9b3, #d4af37);
+    color: #1a1530;
+    box-shadow: 0 0 10px rgba(212,175,130,0.55);
+  }
+  .oheng-badge.neutral {
+    background: rgba(255,255,255,0.07);
+    color: rgba(255,255,255,0.6);
+    border: 1px solid rgba(255,255,255,0.14);
+    font-weight: 700;
+  }
+  .oheng-badge.weak {
+    background: rgba(20,14,40,0.85);
+    color: #ff9a9a;
+    border: 1.5px solid #ff7a7a;
+    animation: weakGlow 1.6s ease-in-out infinite;
+  }
+  @keyframes weakGlow {
+    0%, 100% { box-shadow: 0 0 0 rgba(255,90,90,0); }
+    50% { box-shadow: 0 0 12px rgba(255,90,90,0.6); }
+  }
+</style>
+</head>
+<body class="min-h-screen w-screen text-white">
+
+<div class="twinkle" style="width:4px;height:4px;top:8%;left:15%;"></div>
+<div class="twinkle" style="width:3px;height:3px;top:20%;left:80%;animation-delay:0.5s;"></div>
+<div class="twinkle" style="width:5px;height:5px;top:65%;left:10%;animation-delay:1s;"></div>
+<div class="twinkle" style="width:3px;height:3px;top:75%;left:85%;animation-delay:1.5s;"></div>
+<div class="twinkle" style="width:4px;height:4px;top:40%;left:90%;animation-delay:2s;"></div>
+<div class="twinkle" style="width:3px;height:3px;top:50%;left:5%;animation-delay:0.8s;"></div>
+
+<main id="mainScreen" class="relative h-screen w-screen flex flex-col items-center justify-center px-5">
+  <div class="w-full max-w-sm glass rounded-3xl px-6 py-7 shadow-2xl">
+    <div class="text-center mb-6">
+      <p class="text-xs tracking-widest text-amber-200/70 mb-1">MYSTIC STAY</p>
+      <h1 class="text-xl font-bold gold-text leading-snug">올해의 운기(運氣)와<br>내 사주 흐름의 합 진단받기</h1>
+    </div>
+
+    <div class="mb-4">
+      <label class="block text-[13px] text-amber-100/80 mb-2">생년월일</label>
+      <div class="grid grid-cols-3 gap-2">
+        <select id="birthYear" class="custom-select w-full bg-white/5 border border-amber-200/20 rounded-xl py-2.5 px-2 text-sm text-white focus:outline-none focus:border-amber-300/60"></select>
+        <select id="birthMonth" class="custom-select w-full bg-white/5 border border-amber-200/20 rounded-xl py-2.5 px-2 text-sm text-white focus:outline-none focus:border-amber-300/60"></select>
+        <select id="birthDay" class="custom-select w-full bg-white/5 border border-amber-200/20 rounded-xl py-2.5 px-2 text-sm text-white focus:outline-none focus:border-amber-300/60"></select>
+      </div>
+    </div>
+
+    <div class="mb-7">
+      <label class="block text-[13px] text-amber-100/80 mb-2">태어난 시간</label>
+      <div class="flex items-center gap-2">
+        <select id="birthTime" class="custom-select flex-1 bg-white/5 border border-amber-200/20 rounded-xl py-2.5 px-2 text-sm text-white focus:outline-none focus:border-amber-300/60 disabled:opacity-30"></select>
+        <label class="flex items-center gap-1.5 text-xs text-amber-100/70 whitespace-nowrap cursor-pointer select-none">
+          <input type="checkbox" id="timeUnknown" class="hidden">
+          <span class="checkbox-custom"></span>
+          시간 모름
+        </label>
+      </div>
+    </div>
+
+    <button type="button" id="mainBtn" class="w-full py-3.5 rounded-2xl font-semibold text-[15px] text-[#160f33] shadow-lg active:scale-95 transition-transform" style="background: linear-gradient(135deg, #f3d9a4, #d4af37);">
+      막힌 흐름을 깨우는 오행 솔루션 확인하기
+    </button>
+    <p class="text-center text-[11px] text-amber-100/40 mt-4">입력하신 정보는 분석 목적으로만 사용돼요</p>
+  </div>
+</main>
+
+<section id="loadingScreen" class="hidden-screen relative h-screen w-screen flex flex-col items-center justify-center px-8 text-center">
+  <div class="spinner-ring mb-7"></div>
+  <p id="loadingText" class="text-base font-medium text-amber-100 mb-6 transition-opacity duration-300">사주 원국 분석 중...</p>
+  <div class="w-56 h-1.5 rounded-full bg-white/10 overflow-hidden">
+    <div id="progressBar" class="progress-bar-fill"></div>
+  </div>
+</section>
+
+<section id="resultScreen" class="hidden-screen relative w-screen min-h-screen px-5 py-8 flex flex-col items-center">
+  <div class="w-full max-w-sm">
+    <div class="glass rounded-3xl px-6 py-6 mb-5 text-center">
+      <p class="text-xs tracking-widest text-amber-200/70 mb-1">SAJU ANALYSIS</p>
+      <h2 class="text-lg font-bold gold-text mb-3">당신의 오행 기운 분석 완료</h2>
+
+      <div class="relative flex justify-center mb-4" style="width:230px;height:230px;margin:0 auto;">
+        <svg viewBox="0 0 220 220" width="230" height="230" style="overflow: visible;">
+          <polygon id="radarGrid1" class="radar-grid"></polygon>
+          <polygon id="radarGrid2" class="radar-grid"></polygon>
+          <polygon id="radarGrid3" class="radar-grid"></polygon>
+          <polygon id="radarValue" class="radar-value"></polygon>
+          <circle id="dot-목" class="radar-dot" r="4"></circle>
+          <circle id="dot-화" class="radar-dot" r="4"></circle>
+          <circle id="dot-토" class="radar-dot" r="4"></circle>
+          <circle id="dot-금" class="radar-dot" r="4"></circle>
+          <circle id="dot-수" class="radar-dot" r="4"></circle>
+        </svg>
+
+        <div id="badge-목" class="oheng-badge"></div>
+        <div id="badge-화" class="oheng-badge"></div>
+        <div id="badge-토" class="oheng-badge"></div>
+        <div id="badge-금" class="oheng-badge"></div>
+        <div id="badge-수" class="oheng-badge"></div>
+
+        <div class="radar-score-wrap">
+          <div id="radarScoreNum" class="radar-score-num">0</div>
+          <div class="radar-score-label">올해 운기 합</div>
+        </div>
+      </div>
+
+      <div class="bg-black/20 rounded-2xl p-4 text-left border border-white/5 mb-3">
+        <p class="text-xs font-semibold text-amber-300 mb-1.5 flex items-center gap-1">
+          <span id="symptomTitle">최근 이런 기분을 느끼지 않으셨나요?</span>
+        </p>
+        <p id="symptomText" class="text-xs text-amber-100/80 leading-relaxed"></p>
+      </div>
+
+      <div class="bg-black/20 rounded-2xl p-4 text-left border border-white/5">
+        <p class="text-xs font-semibold text-amber-300 mb-1.5 flex items-center gap-1">
+          <span id="solutionTitle">오행의 균형을 되찾을 보완 가이드</span>
+        </p>
+        <p id="solutionText" class="text-xs text-amber-100/80 leading-relaxed"></p>
+      </div>
+    </div>
+
+    <p class="text-sm font-semibold text-amber-100/90 mb-3 px-1">당신의 기운을 채울 궁합 좋은 숙소</p>
+    <div id="hotelList" class="flex flex-col gap-4 mb-6"></div>
+
+    <p class="text-center text-[11px] text-amber-200/70 mb-2 px-2 leading-relaxed">
+      📢 나랑 꼭 맞는 귀인 친구와 함께 갈 때 운기 버프가 극대화됩니다.
+    </p>
+    <button type="button" id="kakaoShareBtn" class="w-full py-3.5 rounded-2xl font-semibold text-[15px] text-[#160f33] shadow-lg active:scale-95 transition-transform mb-3" style="background: linear-gradient(135deg, #f3d9a4, #d4af37);">
+      🔗 함께 갈 귀인에게 공유하기
+    </button>
+
+    <button type="button" id="leadFormBtn" class="lead-link-btn mb-5">
+      🔒 하반기 액운 비책 미리 신청하기
+    </button>
+
+    <button type="button" id="retryBtn" class="block mx-auto text-xs text-amber-100/40 underline">다시 분석하기</button>
+    <p class="text-center text-[10px] text-amber-100/30 mt-2 leading-relaxed px-4">
+      추천 숙소 예약 시 포춘텔러에게 소정의 복채가 돌아오므로, 이 외에 별도의 복채는 주지 않으셔도 괜찮습니다.
+    </p>
+  </div>
+</section>
+
+<div id="toast"></div>
+<div id="errorBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#ff3b3b;color:#fff;font-size:12px;padding:8px 12px;font-family:monospace;white-space:pre-wrap;"></div>
+
+<script>
+  console.log('Script_Loaded');
+
+  // 내가 나중에 직접 실주소로 교체할 구글 폼 임시 URL
+  const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSekABEyC7FXR8sou7A4tp7NS277BKXXvka3XCyPnIRdjPB71A/viewform?usp=publish-editor";
+
+  // 구글 시트 CSV 연동 주소
+  const SHEET_CSV_BASE_URL = "https://docs.google.com/spreadsheets/d/1pWh5TiBTewNJNLAG37AniahnIQEixNadx4pnkVY7r9w/export?format=csv&gid=0";
+  let DYNAMIC_HOTEL_DB = { '수': [], '금': [], '화': [], '목': [], '토': [] };
+
+  function getSheetUrlWithCacheBuster() {
+    return `${SHEET_CSV_BASE_URL}&t=${Date.now()}`;
+  }
+
+  function showFetchErrorBanner(message) {
+    const banner = document.getElementById('errorBanner');
+    banner.style.display = 'block';
+    banner.textContent = '시트 연동 실패: ' + message + ' (백업 데이터로 대체됨)';
+  }
+
+  function parseCSVLine(text) {
+    let p = '', r = [];
+    let q = false;
+    for (let i = 0; i < text.length; i++) {
+      let c = text[i];
+      if (c === '"') { q = !q; }
+      else if (c === ',' && !q) { r.push(p.trim()); p = ''; }
+      else { p += c; }
+    }
+    r.push(p.trim());
+    return r;
+  }
+
+  function normalizeOhaeng(raw) {
+    if (!raw) return null;
+    const match = raw.match(/[목화토금수]/);
+    return match ? match[0] : null;
+  }
+
+  async function loadHotelDataFromSheet() {
+    try {
+      const response = await fetch(getSheetUrlWithCacheBuster());
+      if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+
+      const csvText = await response.text();
+      const rows = csvText.split(/\r?\n/);
+
+      const freshDB = { '수': [], '금': [], '화': [], '목': [], '토': [] };
+
+      // 실제 시트 열 구조: A(0)=국가, B(1)=오행, C(2)=호텔명(국문), D(3)=호텔명(영문),
+      // E(4)=Klook affiliate link, F(5)=이미지 링크, I(8)=호텔 특징 키워드
+      for (let i = 1; i < rows.length; i++) {
+        if (!rows[i].trim()) continue;
+
+        const columns = parseCSVLine(rows[i]);
+
+        const country = columns[0] && columns[0].trim();
+        const ohaeng = normalizeOhaeng(columns[1]);
+        const name = (columns[2] && columns[2].trim()) || (columns[3] && columns[3].trim());
+        const affUrl = columns[4] && columns[4].trim();
+        const imgUrl = columns[5] && columns[5].trim();
+        const feature = columns[8] && columns[8].trim();
+
+        if (ohaeng && name && freshDB[ohaeng] !== undefined) {
+          freshDB[ohaeng].push({
+            name: name,
+            imageUrl: imgUrl || 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=600&q=80',
+            affiliateUrl: affUrl || 'https://example.com',
+            isKorea: country === '한국',
+            feature: feature || ''
+          });
+        }
+      }
+
+      const hasAnyData = Object.values(freshDB).some(arr => arr.length > 0);
+      if (!hasAnyData) throw new Error("시트에서 유효한 행을 찾지 못함");
+
+      DYNAMIC_HOTEL_DB = freshDB;
+      console.log("구글 시트 국적별 분류 매핑 성공:", DYNAMIC_HOTEL_DB);
+    } catch (err) {
+      console.error("시트 페치 차단 -> 안전 대체 데이터 작동:", err);
+      showFetchErrorBanner(err.message || String(err));
+      useFallbackData();
+    }
+  }
+
+  function useFallbackData() {
+    const types = ['목', '화', '토', '금', '수'];
+    types.forEach(t => {
+      if (!DYNAMIC_HOTEL_DB[t] || DYNAMIC_HOTEL_DB[t].length === 0) {
+        DYNAMIC_HOTEL_DB[t] = [
+          { name: `파크로쉬 웰니스 마스터 (한국)`, imageUrl: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=600&q=80', affiliateUrl: 'https://example.com', isKorea: true, feature: '' },
+          { name: `호시노야 프리미엄 클래스 (일본)`, imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80', affiliateUrl: 'https://example.com', isKorea: false, feature: '' },
+          { name: `리전트 프라이빗 포레스트 (베트남)`, imageUrl: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=600&q=80', affiliateUrl: 'https://example.com', isKorea: false, feature: '' }
+        ];
+      }
+    });
+  }
+
+  loadHotelDataFromSheet();
+
+  window.addEventListener('error', (e) => {
+    const banner = document.getElementById('errorBanner');
+    banner.style.display = 'block';
+    banner.textContent = 'JS 에러: ' + e.message + ' (' + e.filename + ':' + e.lineno + ')';
+  });
+
+  let toastTimer = null;
+  function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 2200);
+  }
+
+  // ---------- 유입 채널 자동 추적 ----------
+  function detectChannel() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const utm = urlParams.get('utm_source');
+    if (utm) return utm;
+
+    const ref = (document.referrer || '').toLowerCase();
+    if (!ref) return 'direct_or_inapp';
+    if (ref.includes('instagram.com')) return 'instagram_organic';
+    if (ref.includes('naver.com') || ref.includes('blog.naver')) return 'naver_blog';
+    if (ref.includes('kakao') || ref.includes('story.kakao')) return 'kakaotalk_link';
+    if (ref.includes('facebook.com') || ref.includes('fb.com')) return 'facebook_organic';
+    if (ref.includes('youtube.com')) return 'youtube_organic';
+    if (ref.includes('google.')) return 'google_organic';
+    return 'referral_unknown';
+  }
+
+  // ---------- 드롭다운 데이터 채우기 ----------
+  const yearSelect = document.getElementById('birthYear');
+  const monthSelect = document.getElementById('birthMonth');
+  const daySelect = document.getElementById('birthDay');
+  const timeSelect = document.getElementById('birthTime');
+  const timeUnknown = document.getElementById('timeUnknown');
+
+  const currentYear = new Date().getFullYear();
+  for (let y = currentYear; y >= currentYear - 100; y--) yearSelect.add(new Option(y + '년', y));
+  for (let m = 1; m <= 12; m++) monthSelect.add(new Option(m + '월', m));
+  for (let d = 1; d <= 31; d++) daySelect.add(new Option(d + '일', d));
+
+  const timeLabels = [
+    '00:30~01:29 (子)', '01:30~03:29 (丑)', '03:30~05:29 (寅)', '05:30~07:29 (卯)',
+    '07:30~09:29 (辰)', '09:30~11:29 (巳)', '11:30~13:29 (午)', '13:30~15:29 (未)',
+    '15:30~17:29 (申)', '17:30~19:29 (酉)', '19:30~21:29 (戌)', '21:30~23:29 (亥)'
+  ];
+  timeLabels.forEach((label, i) => timeSelect.add(new Option(label, i)));
+
+  timeUnknown.addEventListener('change', () => { timeSelect.disabled = timeUnknown.checked; });
+
+  const ELEMENTS = ['목', '화', '토', '금', '수'];
+  const ELEMENT_INFO = {
+    '목': { hanja: '木', emoji: '🌿' },
+    '화': { hanja: '火', emoji: '🔥' },
+    '토': { hanja: '土', emoji: '⛰️' },
+    '금': { hanja: '金', emoji: '⚜️' },
+    '수': { hanja: '水', emoji: '🌊' }
+  };
+
+  // 오행이 강할 때(보유) / 보통일 때(중립) 보여줄 강세 수식어
+  const ELEMENT_STRONG_LABEL = {
+    '목': '넘치는 생기',
+    '화': '솟구치는 열정',
+    '토': '단단한 안정감',
+    '금': '날카로운 결단력',
+    '수': '유연한 지혜'
+  };
+
+  const BACKGROUND_THEMES = {
+    '목': 'radial-gradient(circle at 50% 0%, #153e25 0%, #0d2617 45%, #05100a 100%)',
+    '화': 'radial-gradient(circle at 50% 0%, #4c111a 0%, #2b0a0f 45%, #140306 100%)',
+    '토': 'radial-gradient(circle at 50% 0%, #ffeaa7 0%, #f1c40f 45%, #967407 100%)',
+    '금': 'radial-gradient(circle at 50% 0%, #3a3f47 0%, #21252b 45%, #0f1114 100%)',
+    '수': 'radial-gradient(circle at 50% 0%, #aae3ff 0%, #5cbbf2 45%, #184c75 100%)'
+  };
+
+  // 2026년은 강력한 화기(火氣)가 지배하는 해라는 대전제 위에서, 부족한 오행마다
+  // 화기와의 관계(克/生)에 따라 다르게 타격받는 서사를 구성
+  const ELEMENT_DETAILS = {
+    '목': {
+      need: '생기와 추진력',
+      symptom: "올해는 사방을 집어삼킬 듯 폭발하는 강력한 불길(화기)이 모든 것을 활활 태우는 해입니다. 이 불길은 다름 아닌 내 사주의 푸르른 목(木) 기운을 땔감 삼아 거세지는데, 정작 스스로를 지키고 새 가지를 뻗어나가야 할 목(木) 기운(울타리)이 바닥난 상태이다 보니, 타오르는 불길에 나의 생기와 추진력이 고스란히 소진되어 버리는 형국입니다. 새로운 도전 앞에서 의욕이 빠르게 꺾이고 무기력증과 번아웃에 빠지기 쉬우며, 성장의 동력 자체를 잃고 정체되는 상태일 수 있습니다. 이럴 때는 생기와 추진력의 보완이 필요합니다.",
+      solution: "잠깐 끝없이 이어지는 일상을 과감히 끊어내고, 내가 부족한 기운을 완벽하게 보완할 수 있는 특별한 장소에서 기운을 채우고 오셔야 합니다. 당신에게는 울창한 나무와 푸르른 정원이 있는 친환경 자연 속 숙소가 최고의 처방입니다. 생기로운 목의 기운이 흐르는 공간에 머무는 동안 고갈됐던 생명력이 빠르게 채워지고, 새로운 시작을 향한 추진력과 번뜩이는 영감이 되살아날 것입니다."
+    },
+    '화': {
+      need: '뜨거운 활력과 사교적 자신감',
+      symptom: "올해는 사방을 휩쓰는 거대한 불길(화기)이 폭발하듯 일어나는 해입니다. 그러나 바깥의 불길이 너무 거세다 보니 정작 내 안에서 스스로 타올라야 할 화(火) 기운(불씨)은 그 압도적인 기세에 짓눌려 위축되고, 미처 빛을 발하지 못한 채 사그라드는 형국입니다. 일상의 재미와 열정이 빠르게 식어버리고, 사람들과의 관계에서도 자신감과 표현력이 위축되는 상태일 수 있습니다. 이럴 때는 뜨거운 활력과 사교적 자신감의 보완이 필요합니다.",
+      solution: "잠깐 끝없이 이어지는 일상을 과감히 끊어내고, 내가 부족한 기운을 완벽하게 보완할 수 있는 특별한 장소에서 기운을 채우고 오셔야 합니다. 당신에게는 스카이라인이 펼쳐지는 화려한 도심의 야경과 루프탑이 있는 숙소가 최고의 처방입니다. 뜨거운 화의 기운이 흐르는 공간에 머무는 동안 식었던 열정과 감성이 다시 타오르고, 차갑게 굳어 있던 사교적 자신감과 활력이 되살아날 것입니다."
+    },
+    '토': {
+      need: '안정감과 든든한 중심',
+      symptom: "올해는 모든 것을 태울 듯한 거대한 불길(화기)이 끝없이 쏟아지는 해입니다. 본래 이 강한 화기를 받아 비옥한 결실로 빚어내야 할 내 사주의 묵직한 토(土) 기운(대지)이 부족한 상태이다 보니, 쏟아지는 열기를 흡수하지 못한 메마른 땅처럼 쩍쩍 갈라지고 무너져 내리는 형국입니다. 주변 환경과 인간관계가 불안정하게 느껴지고, 걱정과 잡생각이 많아져 밤잠을 설치는 상태일 수 있습니다. 이럴 때는 안정감과 든든한 중심의 보완이 필요합니다.",
+      solution: "잠깐 끝없이 이어지는 일상을 과감히 끊어내고, 내가 부족한 기운을 완벽하게 보완할 수 있는 특별한 장소에서 기운을 채우고 오셔야 합니다. 당신에게는 단단한 대지의 기운을 머금은 산속 휴양지나 전통 다다미 공간, 명상 프로그램이 있는 숙소가 최고의 처방입니다. 묵직한 토의 기운이 흐르는 공간에 머무는 동안 불안했던 마음이 차분히 가라앉고, 삶의 중심을 잡아주는 든든한 안정감이 되살아날 것입니다."
+    },
+    '금': {
+      need: '날카로운 집중력과 정돈 능력',
+      symptom: "올해는 거대한 불길(화기)이 사방에서 강하게 몰아치는 해입니다. 이 뜨거운 열기를 식히고 중심을 잡아줄 내 사주의 단단한 금(金) 기운(방패)이 비어있다 보니, 밀려오는 감정적 자극에 멘탈이 쉽게 녹아내립니다. 이로 인해 일이나 인간관계의 맺고 끊음이 흐려져 결단력이 부족해지고, 사소한 일에 감정 소모를 심하게 하며 흔들리는 상태일 수 있습니다. 이럴 때는 날카로운 집중력과 정돈 능력의 보완이 필요합니다.",
+      solution: "잠깐 끝없이 이어지는 일상을 과감히 끊어내고, 내가 부족한 기운을 완벽하게 보완할 수 있는 특별한 장소에서 기운을 채우고 오셔야 합니다. 당신에게는 모던하고 미니멀한 대리석 인테리어와 정갈하게 정돈된 최고급 스파가 있는 시티 럭셔리 숙소가 최고의 처방입니다. 차가운 금의 성질을 가진 공간에 머무는 동안 흐트러진 생각들이 깔끔하게 정리되고, 중요한 결정을 내릴 수 있는 날카로운 결단력과 명석함이 살아날 것입니다."
+    },
+    '수': {
+      need: '지혜로운 소통과 물질적인 유연성',
+      symptom: "올해는 대지를 바짝 말리는 강력한 불길(화기)이 사방에서 폭발하는 해입니다. 이때 타오르는 열기를 식히고 유연하게 제어해 줄 내 사주의 '수(水)' 기운(방패)이 가뭄을 맞은 상태이다 보니, 거대한 화기에 내 소중한 수분이 완전히 증발해 버리는 형국입니다. 변화를 받아들일 물길이 없어 생각의 유연성이 떨어지고 사방이 막힌 듯 답답함을 느끼며, 특히 재물과 현금 흐름이 정체되는 타격을 입게 됩니다. 이럴 때는 지혜로운 소통과 물질적인 유연성의 보완이 필요합니다.",
+      solution: "잠깐 끝없이 이어지는 일상을 과감히 끊어내고, 내가 부족한 기운을 완벽하게 보완할 수 있는 특별한 장소에서 기운을 채우고 오셔야 합니다. 당신에게는 탁 트인 바다가 보이는 오션뷰 인피니티 풀과 프라이빗 비치가 있는 숙소가 최고의 처방입니다. 유연한 수의 기운이 흐르는 공간에 머무는 동안 막혔던 생각과 재물의 흐름이 시원하게 트이고, 지혜로운 유연함과 평온함이 되살아날 것입니다."
+    }
+  };
+
+  // I열이 비어있을 때를 위한 오행별 기본 특징 (안전한 대체용)
+  const ELEMENT_FEATURE_FALLBACK = {
+    '목': '울창한 숲과 싱그러운 정원이 머무는 곳 전체를 감싸는 분위기',
+    '화': '화려한 도심의 야경과 따뜻한 조명이 사방에서 타오르는 분위기',
+    '토': '거대한 바위와 단단한 흙이 둘러싼 산세가 머무는 곳을 든든하게 받쳐주는 분위기',
+    '금': '미니멀한 대리석 직선 인테리어가 공간 전체를 차갑게 정돈하는 분위기',
+    '수': '드넓게 펼쳐진 바다와 물방울 모양의 수영장이 마주하는 분위기'
+  };
+
+  // 인트로/마무리 문구: 오행별 2~3개 버전을 두고 호텔명 기반으로 결정적으로 분배해
+  // 같은 오행이 걸려도 카드마다 다른 문구가 뽑히도록 함
+  const ELEMENT_INTRO_VARIANTS = {
+    '목': (name, hanja) => [
+      `생기와 추진력을 채워줄 '목(${hanja})' 기운의 풍수 명당, <strong class="text-white">${name}</strong>.`,
+      `막혔던 '목(${hanja})' 기운을 틔워줄 자연의 쉼터, <strong class="text-white">${name}</strong>.`,
+      `생기 가득한 '목(${hanja})' 기운이 머무는 곳, <strong class="text-white">${name}</strong>.`
+    ],
+    '화': (name, hanja) => [
+      `뜨거운 활력을 채워줄 '화(${hanja})' 기운의 풍수 명당, <strong class="text-white">${name}</strong>.`,
+      `식었던 열정을 되살릴 '화(${hanja})' 기운의 핫스팟, <strong class="text-white">${name}</strong>.`,
+      `활력이 타오르는 '화(${hanja})' 기운의 공간, <strong class="text-white">${name}</strong>.`
+    ],
+    '토': (name, hanja) => [
+      `안정감을 채워줄 '토(${hanja})' 기운의 풍수 명당, <strong class="text-white">${name}</strong>.`,
+      `든든한 중심을 잡아줄 '토(${hanja})' 기운의 안식처, <strong class="text-white">${name}</strong>.`,
+      `묵직한 '토(${hanja})' 기운이 머무는 곳, <strong class="text-white">${name}</strong>.`
+    ],
+    '금': (name, hanja) => [
+      `날카로운 결단력을 채워줄 '금(${hanja})' 기운의 풍수 명당, <strong class="text-white">${name}</strong>.`,
+      `흐트러진 생각을 정돈해줄 '금(${hanja})' 기운의 공간, <strong class="text-white">${name}</strong>.`,
+      `차가운 명석함이 깃든 '금(${hanja})' 기운의 명당, <strong class="text-white">${name}</strong>.`
+    ],
+    '수': (name, hanja) => [
+      `지혜로운 유연함을 채워줄 '수(${hanja})' 기운의 풍수 명당, <strong class="text-white">${name}</strong>.`,
+      `막혔던 흐름을 틔워줄 '수(${hanja})' 기운의 공간, <strong class="text-white">${name}</strong>.`,
+      `유연한 '수(${hanja})' 기운이 흐르는 곳, <strong class="text-white">${name}</strong>.`
+    ]
+  };
+
+  const ELEMENT_CLOSING_VARIANTS = {
+    '목': (needed) => [
+      `이곳에 머무는 동안, 막혔던 ${needed} 기운이 자연스럽게 채워질 것입니다.`,
+      `이 공간에서 고갈됐던 생명력과 추진력이 다시 차오르는 걸 느낄 수 있을 거예요.`,
+      `새로운 시작을 향한 영감이 이곳에서 자연스럽게 샘솟을 것입니다.`
+    ],
+    '화': (needed) => [
+      `이곳에 머무는 동안, 막혔던 ${needed} 기운이 자연스럽게 채워질 것입니다.`,
+      `이 공간에서 식었던 열정과 자신감이 다시 타오르는 걸 느낄 수 있을 거예요.`,
+      `차갑게 굳어 있던 감성이 이곳에서 자연스럽게 풀려날 것입니다.`
+    ],
+    '토': (needed) => [
+      `이곳에 머무는 동안, 막혔던 ${needed} 기운이 자연스럽게 채워질 것입니다.`,
+      `이 공간에서 불안했던 마음이 차분히 가라앉는 걸 느낄 수 있을 거예요.`,
+      `삶의 중심을 잡아주는 든든한 안정감이 이곳에서 자연스럽게 채워질 것입니다.`
+    ],
+    '금': (needed) => [
+      `이곳에 머무는 동안, 막혔던 ${needed} 기운이 자연스럽게 채워질 것입니다.`,
+      `이 공간에서 흐트러진 생각이 깔끔하게 정리되는 걸 느낄 수 있을 거예요.`,
+      `중요한 결정을 내릴 날카로운 결단력이 이곳에서 자연스럽게 채워질 것입니다.`
+    ],
+    '수': (needed) => [
+      `이곳에 머무는 동안, 막혔던 ${needed} 기운이 자연스럽게 채워질 것입니다.`,
+      `이 공간에서 막혔던 생각과 재물의 흐름이 시원하게 트이는 걸 느낄 수 있을 거예요.`,
+      `지혜로운 유연함과 평온함이 이곳에서 자연스럽게 채워질 것입니다.`
+    ]
+  };
+
+  // 문자열을 0 이상의 정수 해시로 변환 (호텔명마다 결정적으로 다른 버전이 뽑히도록)
+  function hashStringToIndex(str, mod) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash * 31 + str.charCodeAt(i)) % 1000003;
+    }
+    return Math.abs(hash) % mod;
+  }
+
+  // 구글 시트 I열은 "강조 포인트 키워드"이지 완결된 문장이 아니므로, 베이스 서식문 중간에
+  // 문법적으로 끼워 넣지 않고 별도의 독립 문장(포인트 콜아웃)으로 분리해 자연스럽게 연결
+  function buildPersonalizedReason(needed, hotel) {
+    const hanja = ELEMENT_INFO[needed].hanja;
+    const variantIdx = hashStringToIndex(hotel.name, 3);
+
+    const intro = ELEMENT_INTRO_VARIANTS[needed](hotel.name, hanja)[variantIdx];
+    const closing = ELEMENT_CLOSING_VARIANTS[needed](needed)[variantIdx];
+    const feature = (hotel.feature && hotel.feature.trim()) || ELEMENT_FEATURE_FALLBACK[needed];
+
+    return `${intro} 이곳만의 포인트는 “${feature}”예요. ${closing}`;
+  }
+
+  // ---------- 카드 뱃지 랜덤화 & 럭키 버프 1:1 동기화 ----------
+  const BADGE_POOL = ['재물운 명당', '연애운 핵심스팟', '대박 귀인 스팟', '번아웃 처방 스팟', '문서운 버프존', '명예운 상승 명당'];
+  const BADGE_BUFF_MAP = {
+    '재물운 명당': '💰 막혔던 현금 흐름의 대반전',
+    '연애운 핵심스팟': '💘 얼어붙은 연애 세포의 대부활',
+    '대박 귀인 스팟': '🍀 인생을 바꿀 결정적 귀인 등장',
+    '번아웃 처방 스팟': '🌿 방전된 멘탈의 완전 충전',
+    '문서운 버프존': '📜 막혔던 계약·시험운 활짝 개통',
+    '명예운 상승 명당': '🎯 평판과 명예가 솟구치는 터닝포인트'
+  };
+
+  function pickRandomBadges() {
+    return shuffleArray(BADGE_POOL).slice(0, 2);
+  }
+
+  // 카카오톡 등 공유 메시지: 오행별로 자동 치환
+  function buildShareMessage(needed, hotel) {
+    const spaceByElement = {
+      '목': '숲속 힐링 숙소',
+      '화': '루프탑 야경 숙소',
+      '토': '산속 온천 숙소',
+      '금': '대리석 스파 숙소',
+      '수': '오션뷰 풀빌라'
+    };
+    const space = spaceByElement[needed] || '럭키 숙소';
+    return `나 올해 사주에 ${needed}(${ELEMENT_INFO[needed].hanja}) 기운이 없어서 맨날 흔들렸나 봐 ㅠ 너도 이 기운 부족할지 몰라! 나랑 ${space} 가볼래?`;
+  }
+
+  function analyzeSaju(year, month, day) {
+    const seed = year + month * 7 + day * 13;
+    const ownedCount = 3;
+    const startIdx = seed % 5;
+    const owned = [];
+    for (let i = 0; i < ownedCount; i++) owned.push(ELEMENTS[(startIdx + i) % 5]);
+    const needed = ELEMENTS[(startIdx + ownedCount) % 5];
+    return { owned, needed, seed };
+  }
+
+  function calculateMatchScore(seed) {
+    return 70 + (Math.abs(seed) % 26);
+  }
+
+  function shuffleArray(array) {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // 동일한 I열(feature) 내용을 가진 호텔이 같은 3개 세트에 중복으로 뽑히지 않도록
+  // feature 텍스트가 이미 사용된 경우는 1순위에서 배제하고, 풀이 부족할 때만 허용
+  function pickDiverseByFeature(candidates, count, alreadyPicked) {
+    const usedFeatures = new Set(
+      alreadyPicked.map(h => h.feature && h.feature.trim()).filter(Boolean)
+    );
+    const shuffled = shuffleArray(candidates);
+    const result = [];
+
+    shuffled.forEach(h => {
+      if (result.length >= count) return;
+      const feature = h.feature && h.feature.trim();
+      if (!feature || !usedFeatures.has(feature)) {
+        result.push(h);
+        if (feature) usedFeatures.add(feature);
+      }
+    });
+
+    if (result.length < count) {
+      shuffled.forEach(h => {
+        if (result.length >= count) return;
+        if (!result.includes(h)) result.push(h);
+      });
+    }
+
+    return result;
+  }
+
+  // ---------- 한국 숙소 1개 확정 보장형 믹스 로직 ----------
+  function getConditionalRandomHotels(neededElement) {
+    let pool = DYNAMIC_HOTEL_DB[neededElement] || [];
+
+    if (pool.length === 0) {
+      useFallbackData();
+      pool = DYNAMIC_HOTEL_DB[neededElement] || [];
+    }
+
+    const koreaHotels = pool.filter(h => h.isKorea === true);
+
+    let result = [];
+
+    if (koreaHotels.length > 0) {
+      const shuffledKorea = shuffleArray(koreaHotels);
+      result.push(shuffledKorea[0]);
+    }
+
+    const remainingPool = pool.filter(h => !result.includes(h));
+    const picked = pickDiverseByFeature(remainingPool, 3 - result.length, result);
+    result = result.concat(picked);
+
+    return shuffleArray(result);
+  }
+
+  // ---------- 오각형 방사형 그래프 ----------
+  const RADAR_CENTER = 110;
+  const RADAR_MAX_R = 70;
+  const RADAR_BADGE_R = 100;
+  const RADAR_VIEWBOX = 220;
+  const RADAR_ANGLES = { '목': -90, '화': -18, '토': 54, '금': 126, '수': 198 };
+
+  function radarPolar(angleDeg, r) {
+    const rad = (angleDeg * Math.PI) / 180;
+    return { x: RADAR_CENTER + r * Math.cos(rad), y: RADAR_CENTER + r * Math.sin(rad) };
+  }
+
+  function radarPointsForFraction(frac) {
+    return ELEMENTS.map(el => {
+      const p = radarPolar(RADAR_ANGLES[el], RADAR_MAX_R * frac);
+      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+    }).join(' ');
+  }
+
+  function initRadarChart() {
+    document.getElementById('radarGrid1').setAttribute('points', radarPointsForFraction(1));
+    document.getElementById('radarGrid2').setAttribute('points', radarPointsForFraction(0.66));
+    document.getElementById('radarGrid3').setAttribute('points', radarPointsForFraction(0.33));
+
+    // 뱃지(HTML 오버레이)는 SVG 좌표를 퍼센트로 환산해 동일 컨테이너 위에 절대 배치
+    ELEMENTS.forEach(el => {
+      const p = radarPolar(RADAR_ANGLES[el], RADAR_BADGE_R);
+      const badgeEl = document.getElementById(`badge-${el}`);
+      badgeEl.style.left = `${(p.x / RADAR_VIEWBOX) * 100}%`;
+      badgeEl.style.top = `${(p.y / RADAR_VIEWBOX) * 100}%`;
+    });
+  }
+  initRadarChart();
+
+  function renderRadarValues(owned, needed) {
+    const valueFraction = {};
+    ELEMENTS.forEach(el => {
+      if (el === needed) valueFraction[el] = 0.28;
+      else if (owned.includes(el)) valueFraction[el] = 0.92;
+      else valueFraction[el] = 0.58;
+    });
+
+    const valuePoints = ELEMENTS.map(el => {
+      const p = radarPolar(RADAR_ANGLES[el], RADAR_MAX_R * valueFraction[el]);
+      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+    }).join(' ');
+    document.getElementById('radarValue').setAttribute('points', valuePoints);
+
+    ELEMENTS.forEach(el => {
+      const isNeeded = el === needed;
+      const isOwned = owned.includes(el);
+      const p = radarPolar(RADAR_ANGLES[el], RADAR_MAX_R * valueFraction[el]);
+      const dot = document.getElementById(`dot-${el}`);
+      dot.setAttribute('cx', p.x.toFixed(1));
+      dot.setAttribute('cy', p.y.toFixed(1));
+
+      const badgeEl = document.getElementById(`badge-${el}`);
+      badgeEl.classList.remove('strong', 'neutral', 'weak');
+      if (isNeeded) {
+        badgeEl.classList.add('weak');
+        badgeEl.innerHTML = `⚠️ ${el} [기운 부족]`;
+      } else if (isOwned) {
+        badgeEl.classList.add('strong');
+        badgeEl.innerHTML = `${ELEMENT_INFO[el].emoji} ${el} [${ELEMENT_STRONG_LABEL[el]}]`;
+      } else {
+        badgeEl.classList.add('neutral');
+        badgeEl.innerHTML = `${el} [균형]`;
+      }
+    });
+  }
+
+  // 현재 결과 화면에 노출 중인 정보 (공유 버튼 등에서 재사용)
+  let currentResultContext = { needed: '화', topHotel: null };
+
+  function renderResult(year, month, day) {
+    const { owned, needed, seed } = analyzeSaju(year, month, day);
+
+    document.body.style.background = BACKGROUND_THEMES[needed];
+
+    renderRadarValues(owned, needed);
+
+    const score = calculateMatchScore(seed);
+    document.getElementById('radarScoreNum').textContent = `${score}`;
+
+    const details = ELEMENT_DETAILS[needed];
+    document.getElementById('symptomTitle').textContent = `⚠️ 올해 운기와 내 '${needed}(${ELEMENT_INFO[needed].hanja})' 부족 오행이 부딪힐 때 증상`;
+    document.getElementById('symptomText').textContent = details.symptom;
+    document.getElementById('solutionTitle').textContent = `🎯 오행의 균형을 되찾을 '${needed}(${ELEMENT_INFO[needed].hanja})' 기운 보완 가이드`;
+    document.getElementById('solutionText').textContent = details.solution;
+
+    const hotelListEl = document.getElementById('hotelList');
+
+    // 한국 숙소 1개 확정 + 나머지 랜덤 2개 조합 로직
+    const finalDisplayHotels = getConditionalRandomHotels(needed);
+
+    // 유입 채널 자동 추적: utm_source 우선, 없으면 referrer로 추론
+    const channelParam = detectChannel();
+
+    hotelListEl.innerHTML = finalDisplayHotels.map((h, idx) => {
+      const separator = h.affiliateUrl.includes('?') ? '&' : '?';
+      const finalTrackingUrl = `${h.affiliateUrl}${separator}pid=${channelParam}`;
+      const reasonHtml = buildPersonalizedReason(needed, h);
+      const badges = pickRandomBadges();
+      const buffText = BADGE_BUFF_MAP[badges[0]];
+
+      return `
+        <div class="hotel-card" data-idx="${idx}" data-affiliate-url="${finalTrackingUrl}">
+          <img class="hotel-thumb" src="${h.imageUrl}" alt="${h.name}" onerror="this.src='https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=600&q=80'" loading="lazy">
+          <div class="p-4">
+            <p class="text-[14px] font-bold text-white leading-snug mb-1.5">${h.name}</p>
+            <div class="flex flex-wrap gap-1.5 mb-2.5">
+              ${badges.map(tag => `<span class="hotel-tag">${tag}</span>`).join('')}
+            </div>
+            <p class="text-xs text-amber-100/75 leading-relaxed mb-3 bg-black/25 p-2.5 rounded-xl border border-white/5">
+              💡 <strong class="text-amber-200">추천 이유:</strong> ${reasonHtml}
+            </p>
+            <div class="flex items-center justify-between border-t border-white/10 pt-2.5 mt-2">
+              <span class="text-[12px] font-bold text-emerald-300">${buffText}</span>
+              <button type="button" class="hotel-cta-btn hotel-go-btn" data-affiliate-url="${finalTrackingUrl}">호텔에서 기운 받기</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    currentResultContext = { needed, topHotel: finalDisplayHotels[0] || null };
+
+    return { owned, needed };
+  }
+
+  function openExternalLink(url) {
+    const newWin = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!newWin) window.location.href = url;
+  }
+
+  document.getElementById('hotelList').addEventListener('click', (e) => {
+    const goBtn = e.target.closest('.hotel-go-btn');
+    const card = e.target.closest('.hotel-card');
+    if (!card) return;
+
+    const url = (goBtn || card).dataset.affiliateUrl;
+    console.log('Hotel_Banner_Clicked', { url });
+    openExternalLink(url);
+  });
+
+  // ---------- 화면 전환 공통 유틸 ----------
+  function showScreen(el) {
+    el.classList.remove('hidden-screen');
+    el.style.display = 'flex';
+    el.classList.add('fade-in');
+  }
+  function hideScreen(el) {
+    el.classList.add('hidden-screen');
+    el.style.display = 'none';
+    el.classList.remove('fade-out', 'fade-in');
+  }
+  function switchScreen(fromEl, toEl) {
+    fromEl.classList.add('fade-out');
+    setTimeout(() => {
+      hideScreen(fromEl);
+      showScreen(toEl);
+      try { window.scrollTo(0, 0); } catch (e) {}
+    }, 500);
+  }
+
+  // ---------- 메인 → 로딩 → 결과 화면 전환 ----------
+  const mainScreen = document.getElementById('mainScreen');
+  const loadingScreen = document.getElementById('loadingScreen');
+  const resultScreen = document.getElementById('resultScreen');
+  const loadingText = document.getElementById('loadingText');
+  const progressBar = document.getElementById('progressBar');
+  const mainBtn = document.getElementById('mainBtn');
+  const kakaoShareBtn = document.getElementById('kakaoShareBtn');
+  const leadFormBtn = document.getElementById('leadFormBtn');
+
+  mainBtn.addEventListener('click', () => {
+    console.log('Main_Button_Clicked');
+    const year = parseInt(yearSelect.value, 10);
+    const month = parseInt(monthSelect.value, 10);
+    const day = parseInt(daySelect.value, 10);
+
+    mainScreen.classList.add('fade-out');
+    setTimeout(() => {
+      hideScreen(mainScreen);
+      showScreen(loadingScreen);
+
+      requestAnimationFrame(() => { progressBar.style.width = '100%'; });
+
+      setTimeout(() => {
+        loadingText.style.opacity = 0;
+        setTimeout(() => {
+          loadingText.textContent = '나에게 필요한 오행 기운 계산 중...';
+          loadingText.style.opacity = 1;
+        }, 200);
+      }, 700);
+
+      setTimeout(() => {
+        console.log('Loading_Finished');
+        const { needed } = renderResult(year, month, day);
+        console.log('Result_Rendered', { needed });
+        switchScreen(loadingScreen, resultScreen);
+      }, 1500);
+    }, 500);
+  });
+
+  // 함께 갈 귀인에게 공유하기: 모바일 네이티브 공유 시트(navigator.share)를 호출
+  kakaoShareBtn.addEventListener('click', async () => {
+    console.log('Kakao_Share_Button_Clicked', currentResultContext);
+    const { needed, topHotel } = currentResultContext;
+    const message = buildShareMessage(needed, topHotel);
+    const shareUrl = (topHotel && topHotel.affiliateUrl) || window.location.href;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: message, url: shareUrl });
+        return;
+      } catch (err) {
+        console.log('Share_Cancelled_Or_Failed', err);
+        return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(`${message} ${shareUrl}`);
+      showToast('공유 메시지가 복사됐어요! 카카오톡에 붙여넣어 보내보세요.');
+    } catch (err) {
+      showToast('공유 메시지를 복사하지 못했어요. 직접 캡처해서 공유해 주세요!');
+    }
+  });
+
+  // 하반기 액운 비책 미리 신청하기: 임시 구글 폼 URL로 새 창 이동 (실주소 교체는 GOOGLE_FORM_URL만 수정)
+  leadFormBtn.addEventListener('click', () => {
+    console.log('Lead_Form_Button_Clicked');
+    openExternalLink(GOOGLE_FORM_URL);
+  });
+
+  document.getElementById('retryBtn').addEventListener('click', () => {
+    console.log('Retry_Button_Clicked');
+    document.body.style.background = 'radial-gradient(circle at 50% 0%, #2a1f5c 0%, #160f33 45%, #0a0620 100%)';
+    progressBar.style.width = '0%';
+    loadingText.textContent = '사주 원국 분석 중...';
+    switchScreen(resultScreen, mainScreen);
+    loadHotelDataFromSheet();
+  });
+</script>
+</body>
+</html>
