@@ -73,7 +73,9 @@
   .fade-in { animation: fadeIn 0.6s ease forwards; }
   @keyframes fadeOut { to { opacity: 0; transform: scale(0.96); } }
   @keyframes fadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-  .hidden-screen { display: none; }
+  /* Tailwind CDN이 런타임에 주입하는 .flex 등 유틸리티 클래스와 동일 우선순위(클래스 셀렉터)라서
+     주입 순서에 따라 밀릴 수 있으므로 !important로 항상 이기도록 고정 */
+  .hidden-screen { display: none !important; }
 
   .spinner-ring {
     width: 64px; height: 64px;
@@ -83,6 +85,39 @@
     animation: spin 1s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- 로딩 화면: 해치(HAECHI) 풀스크린 배경 + 네온그린 아우라 ---------- */
+  #loadingScreen {
+    background-image:
+      linear-gradient(to bottom, rgba(8,4,18,0.1) 0%, rgba(8,4,18,0.45) 60%, rgba(5,2,12,0.88) 100%),
+      url('https://res.cloudinary.com/dlcvphxma/image/upload/v1782718181/hae-chi_d40nyk.jpg');
+    background-size: cover;
+    background-position: center 28%;
+    background-repeat: no-repeat;
+    justify-content: flex-end;
+    padding-bottom: 13vh;
+  }
+  #loadingScreen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 32%, rgba(80,255,170,0.22), transparent 48%);
+    mix-blend-mode: screen;
+    animation: haechiAuraPulse 2.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes haechiAuraPulse {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 1; }
+  }
+  .haechi-caption {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: rgba(140,255,200,0.85);
+    text-shadow: 0 0 10px rgba(80,255,170,0.6);
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
 
   .progress-bar-fill {
     height: 100%;
@@ -292,7 +327,8 @@
   </div>
 </main>
 
-<section id="loadingScreen" class="hidden-screen relative h-screen w-screen flex flex-col items-center justify-center px-8 text-center">
+<section id="loadingScreen" class="hidden-screen relative h-screen w-screen flex flex-col items-center px-8 text-center">
+  <p class="haechi-caption">HAECHI · 운세 수호신이 살펴보는 중</p>
   <div class="spinner-ring mb-7"></div>
   <p id="loadingText" class="text-base font-medium text-amber-100 mb-6 transition-opacity duration-300">사주 원국 분석 중...</p>
   <div class="w-56 h-1.5 rounded-full bg-white/10 overflow-hidden">
