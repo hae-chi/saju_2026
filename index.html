@@ -3,7 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>사주로 찾는 나만의 숙소</title>
+<title>올해 운기와 사주 합 진단</title>
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://hae-chi.github.io/saju_2026/">
+<meta property="og:title" content="2026 운기와 내 사주 오행의 합🔮">
+<meta property="og:description" content="나에게 부족한 오행 기운을 채워줄 럭키 풍수 명당은 어디일까?">
+<meta property="og:image" content="https://res.cloudinary.com/dlcvphxma/image/upload/v1782718181/hae-chi_d40nyk.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   body {
@@ -73,8 +82,6 @@
   .fade-in { animation: fadeIn 0.6s ease forwards; }
   @keyframes fadeOut { to { opacity: 0; transform: scale(0.96); } }
   @keyframes fadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-  /* Tailwind CDN이 런타임에 주입하는 .flex 등 유틸리티 클래스와 동일 우선순위(클래스 셀렉터)라서
-     주입 순서에 따라 밀릴 수 있으므로 !important로 항상 이기도록 고정 */
   .hidden-screen { display: none !important; }
 
   .spinner-ring {
@@ -127,7 +134,7 @@
     transition: width 1.5s ease;
   }
 
-  /* ---------- 숙소 카드: 흰 배경 제거, 다크 글래스 마감으로 배경과 끊김 없이 이어짐 ---------- */
+  /* ---------- 숙소 카드: 다크 글래스 마감 ---------- */
   .hotel-card {
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(212,175,130,0.2);
@@ -223,7 +230,6 @@
     transition: all 0.8s ease;
   }
 
-  /* ---------- 중앙 점수 오버레이 (붉은 원 제거, 프레미엄 단독 숫자) ---------- */
   .radar-score-wrap {
     position: absolute;
     top: 50%;
@@ -247,7 +253,6 @@
     margin-top: 2px;
   }
 
-  /* ---------- 오행 강약 뱃지 (그래프 꼭지점 오버레이) ---------- */
   .oheng-badge {
     position: absolute;
     transform: translate(-50%, -50%);
@@ -409,10 +414,7 @@
 <script>
   console.log('Script_Loaded');
 
-  // 내가 나중에 직접 실주소로 교체할 구글 폼 임시 URL
   const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSekABEyC7FXR8sou7A4tp7NS277BKXXvka3XCyPnIRdjPB71A/viewform?usp=publish-editor";
-
-  // 구글 시트 CSV 연동 주소
   const SHEET_CSV_BASE_URL = "https://docs.google.com/spreadsheets/d/1pWh5TiBTewNJNLAG37AniahnIQEixNadx4pnkVY7r9w/export?format=csv&gid=0";
   let DYNAMIC_HOTEL_DB = { '수': [], '금': [], '화': [], '목': [], '토': [] };
 
@@ -455,8 +457,6 @@
 
       const freshDB = { '수': [], '금': [], '화': [], '목': [], '토': [] };
 
-      // 실제 시트 열 구조: A(0)=국가, B(1)=오행, C(2)=호텔명(국문), D(3)=호텔명(영문),
-      // E(4)=Klook affiliate link, F(5)=이미지 링크, I(8)=호텔 특징 키워드
       for (let i = 1; i < rows.length; i++) {
         if (!rows[i].trim()) continue;
 
@@ -522,7 +522,6 @@
     toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 2200);
   }
 
-  // ---------- 유입 채널 자동 추적 ----------
   function detectChannel() {
     const urlParams = new URLSearchParams(window.location.search);
     const utm = urlParams.get('utm_source');
@@ -539,7 +538,6 @@
     return 'referral_unknown';
   }
 
-  // ---------- 드롭다운 데이터 채우기 ----------
   const yearSelect = document.getElementById('birthYear');
   const monthSelect = document.getElementById('birthMonth');
   const daySelect = document.getElementById('birthDay');
@@ -569,7 +567,6 @@
     '수': { hanja: '水', emoji: '🌊' }
   };
 
-  // 오행이 강할 때(보유) / 보통일 때(중립) 보여줄 강세 수식어
   const ELEMENT_STRONG_LABEL = {
     '목': '넘치는 생기',
     '화': '솟구치는 열정',
@@ -586,8 +583,6 @@
     '수': 'radial-gradient(circle at 50% 0%, #aae3ff 0%, #5cbbf2 45%, #184c75 100%)'
   };
 
-  // 2026년은 강력한 화기(火氣)가 지배하는 해라는 대전제 위에서, 부족한 오행마다
-  // 화기와의 관계(克/生)에 따라 다르게 타격받는 서사를 구성
   const ELEMENT_DETAILS = {
     '목': {
       need: '생기와 추진력',
@@ -616,7 +611,6 @@
     }
   };
 
-  // I열이 비어있을 때를 위한 오행별 기본 특징 (안전한 대체용)
   const ELEMENT_FEATURE_FALLBACK = {
     '목': '울창한 숲과 싱그러운 정원이 머무는 곳 전체를 감싸는 분위기',
     '화': '화려한 도심의 야경과 따뜻한 조명이 사방에서 타오르는 분위기',
@@ -625,8 +619,6 @@
     '수': '드넓게 펼쳐진 바다와 물방울 모양의 수영장이 마주하는 분위기'
   };
 
-  // 인트로/마무리 문구: 오행별 2~3개 버전을 두고 호텔명 기반으로 결정적으로 분배해
-  // 같은 오행이 걸려도 카드마다 다른 문구가 뽑히도록 함
   const ELEMENT_INTRO_VARIANTS = {
     '목': (name, hanja) => [
       `생기와 추진력을 채워줄 '목(${hanja})' 기운의 풍수 명당, <strong class="text-white">${name}</strong>.`,
@@ -683,7 +675,6 @@
     ]
   };
 
-  // 문자열을 0 이상의 정수 해시로 변환 (호텔명마다 결정적으로 다른 버전이 뽑히도록)
   function hashStringToIndex(str, mod) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -692,8 +683,6 @@
     return Math.abs(hash) % mod;
   }
 
-  // 구글 시트 I열은 "강조 포인트 키워드"이지 완결된 문장이 아니므로, 베이스 서식문 중간에
-  // 문법적으로 끼워 넣지 않고 별도의 독립 문장(포인트 콜아웃)으로 분리해 자연스럽게 연결
   function buildPersonalizedReason(needed, hotel) {
     const hanja = ELEMENT_INFO[needed].hanja;
     const variantIdx = hashStringToIndex(hotel.name, 3);
@@ -705,7 +694,6 @@
     return `${intro} 이곳만의 포인트는 “${feature}”예요. ${closing}`;
   }
 
-  // ---------- 카드 뱃지 랜덤화 & 럭키 버프 1:1 동기화 ----------
   const BADGE_POOL = ['재물운 명당', '연애운 핵심스팟', '대박 귀인 스팟', '번아웃 처방 스팟', '문서운 버프존', '명예운 상승 명당'];
   const BADGE_BUFF_MAP = {
     '재물운 명당': '💰 막혔던 현금 흐름의 대반전',
@@ -720,7 +708,6 @@
     return shuffleArray(BADGE_POOL).slice(0, 2);
   }
 
-  // 카카오톡 등 공유 메시지: 오행별로 자동 치환
   function buildShareMessage(needed, hotel) {
     const spaceByElement = {
       '목': '숲속 힐링 숙소',
@@ -756,8 +743,6 @@
     return arr;
   }
 
-  // 동일한 I열(feature) 내용을 가진 호텔이 같은 3개 세트에 중복으로 뽑히지 않도록
-  // feature 텍스트가 이미 사용된 경우는 1순위에서 배제하고, 풀이 부족할 때만 허용
   function pickDiverseByFeature(candidates, count, alreadyPicked) {
     const usedFeatures = new Set(
       alreadyPicked.map(h => h.feature && h.feature.trim()).filter(Boolean)
@@ -784,7 +769,6 @@
     return result;
   }
 
-  // ---------- 한국 숙소 1개 확정 보장형 믹스 로직 ----------
   function getConditionalRandomHotels(neededElement) {
     let pool = DYNAMIC_HOTEL_DB[neededElement] || [];
 
@@ -794,7 +778,6 @@
     }
 
     const koreaHotels = pool.filter(h => h.isKorea === true);
-
     let result = [];
 
     if (koreaHotels.length > 0) {
@@ -809,7 +792,6 @@
     return shuffleArray(result);
   }
 
-  // ---------- 오각형 방사형 그래프 ----------
   const RADAR_CENTER = 110;
   const RADAR_MAX_R = 70;
   const RADAR_BADGE_R = 100;
@@ -833,7 +815,6 @@
     document.getElementById('radarGrid2').setAttribute('points', radarPointsForFraction(0.66));
     document.getElementById('radarGrid3').setAttribute('points', radarPointsForFraction(0.33));
 
-    // 뱃지(HTML 오버레이)는 SVG 좌표를 퍼센트로 환산해 동일 컨테이너 위에 절대 배치
     ELEMENTS.forEach(el => {
       const p = radarPolar(RADAR_ANGLES[el], RADAR_BADGE_R);
       const badgeEl = document.getElementById(`badge-${el}`);
@@ -880,7 +861,6 @@
     });
   }
 
-  // 현재 결과 화면에 노출 중인 정보 (공유 버튼 등에서 재사용)
   let currentResultContext = { needed: '화', topHotel: null };
 
   function renderResult(year, month, day) {
@@ -900,11 +880,7 @@
     document.getElementById('solutionText').textContent = details.solution;
 
     const hotelListEl = document.getElementById('hotelList');
-
-    // 한국 숙소 1개 확정 + 나머지 랜덤 2개 조합 로직
     const finalDisplayHotels = getConditionalRandomHotels(needed);
-
-    // 유입 채널 자동 추적: utm_source 우선, 없으면 referrer로 추론
     const channelParam = detectChannel();
 
     hotelListEl.innerHTML = finalDisplayHotels.map((h, idx) => {
@@ -935,7 +911,6 @@
     }).join('');
 
     currentResultContext = { needed, topHotel: finalDisplayHotels[0] || null };
-
     return { owned, needed };
   }
 
@@ -954,7 +929,6 @@
     openExternalLink(url);
   });
 
-  // ---------- 화면 전환 공통 유틸 ----------
   function showScreen(el) {
     el.classList.remove('hidden-screen');
     el.style.display = 'flex';
@@ -974,7 +948,6 @@
     }, 500);
   }
 
-  // ---------- 메인 → 로딩 → 결과 화면 전환 ----------
   const mainScreen = document.getElementById('mainScreen');
   const loadingScreen = document.getElementById('loadingScreen');
   const resultScreen = document.getElementById('resultScreen');
@@ -1014,7 +987,6 @@
     }, 500);
   });
 
-  // 함께 갈 귀인에게 공유하기: 모바일 네이티브 공유 시트(navigator.share)를 호출
   kakaoShareBtn.addEventListener('click', async () => {
     console.log('Kakao_Share_Button_Clicked', currentResultContext);
     const { needed, topHotel } = currentResultContext;
@@ -1039,7 +1011,6 @@
     }
   });
 
-  // 하반기 액운 비책 미리 신청하기: 임시 구글 폼 URL로 새 창 이동 (실주소 교체는 GOOGLE_FORM_URL만 수정)
   leadFormBtn.addEventListener('click', () => {
     console.log('Lead_Form_Button_Clicked');
     openExternalLink(GOOGLE_FORM_URL);
